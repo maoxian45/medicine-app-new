@@ -2,7 +2,13 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from dotenv import load_dotenv
+from pathlib import Path
+from services.auth import require_family
+from repositories.knowledge import initialize
+from routers.knowledge import router as knowledge_router, admin_router, auth_router
+load_dotenv(Path(__file__).parent / '.env')
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import init_db
@@ -17,6 +23,7 @@ from routers.today import router as today_router
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    initialize()
     yield
 
 
@@ -37,12 +44,11 @@ app.add_middleware(
 )
 
 
-app.include_router(members_router)
-app.include_router(medicines_router)
-app.include_router(instruction_router)
-app.include_router(reminders_router)
-app.include_router(records_router)
-app.include_router(today_router)
+app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(knowledge_router)
+for family_router in (members_router, medicines_router, instruction_router, reminders_router, records_router, today_router):
+    app.include_router(family_router, dependencies=[Depends(require_family)])
 
 
 @app.get(

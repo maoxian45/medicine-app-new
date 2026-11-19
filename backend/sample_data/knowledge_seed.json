@@ -1,0 +1,35 @@
+[
+  {
+    "kind":"drug","name":"布洛芬","aliases":["布洛芬缓释胶囊","Ibuprofen"],"ingredients":["布洛芬"],
+    "dosage":"剂型和适用人群不同，按具体产品说明书或医嘱核对，不从知识摘要推算剂量。",
+    "contraindications":"完整禁忌须核对具体产品说明书。",
+    "precautions":"如同时使用抗凝药、阿司匹林或其他非甾体抗炎药，应向医生或药师说明。",
+    "special_population":"老年人用药应特别留意消化道出血等风险，咨询医生或药师。",
+    "food_notes":"大量饮酒可能增加消化道风险。",
+    "source_name":"美国国家医学图书馆 MedlinePlus · Ibuprofen",
+    "source_url":"https://medlineplus.gov/druginfo/meds/a682159.html",
+    "chapter":"IMPORTANT WARNING","source_version":"检索快照 2026-11-19（课程资料草稿）",
+    "original":"Tell your doctor if you take any of the following medications: anticoagulants ('blood thinners'); aspirin; other NSAIDs"
+  },
+  {
+    "kind":"drug","name":"华法林","aliases":["华法林钠片","Warfarin"],"ingredients":["华法林"],
+    "dosage":"用量需要医生依据监测结果确定；此处不生成剂量建议。",
+    "contraindications":"完整禁忌须核对具体产品说明书。",
+    "precautions":"其他药品及部分补充剂可能影响出血风险，新增用药前应咨询医生或药师。",
+    "special_population":"老年人应关注出血风险。",
+    "food_notes":"饮食相关要求请查看原资料并与医生或药师核对。",
+    "source_name":"美国国家医学图书馆 MedlinePlus · Warfarin",
+    "source_url":"https://medlineplus.gov/druginfo/meds/a682277.html",
+    "chapter":"What special precautions should I follow?","source_version":"检索快照 2026-11-19（课程资料草稿）",
+    "original":"such as ibuprofen or naproxen."
+  },
+  {
+    "kind":"rule","name":"布洛芬与华法林组合注意","left":"布洛芬","right":"华法林","level":"需关注",
+    "impact":"华法林资料将布洛芬列为可能相互作用的非处方药，应由医生或药师核实组合使用风险。",
+    "advice":"请咨询医生或药师，不要自行停药、换药或调整剂量。",
+    "source_name":"美国国家医学图书馆 MedlinePlus · Warfarin",
+    "source_url":"https://medlineplus.gov/druginfo/meds/a682277.html",
+    "chapter":"What special precautions should I follow?","source_version":"检索快照 2026-11-19（课程规则草稿，等级为系统标记）",
+    "original":"Do not start any of these medications while taking warfarin without discussing with your healthcare provider."
+  }
+]

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>页面3 用药卡片</title>
+<style>
+:root{
+  --screen:#f7fbf9;--primary:#16a085;--primary-dark:#0f766e;--soft:#e5f7f2;
+  --text:#17212b;--muted:#667085;--line:#e5e7eb;--card:#fff;
+  --orange:#f59e0b;--red:#ef4444;--blue:#3b82f6;--green:#22c55e;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:18px;background:linear-gradient(135deg,#edf8f3,#eaf4fb);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);
+}
+.phone{
+  width:330px;height:714px;background:#0b1220;border-radius:42px;padding:10px;
+  box-shadow:0 18px 45px rgba(15,23,42,.20);position:relative;
+}
+.phone:before{content:"";position:absolute;top:12px;left:50%;transform:translateX(-50%);width:92px;height:26px;background:#050505;border-radius:0 0 16px 16px;z-index:9}
+.screen{height:100%;border-radius:34px;background:var(--screen);overflow:hidden;position:relative}
+.status{height:40px;padding:11px 20px 0;display:flex;justify-content:space-between;font-size:11px;font-weight:800;position:relative;z-index:4}
+.icons{display:flex;gap:4px;align-items:center}.battery{width:20px;height:9px;border:1.5px solid #0f172a;border-radius:3px;position:relative}.battery:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:3px;background:#0f172a;border-radius:1px}
+.header{padding:0 18px 10px}.headrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.title small{display:block;color:var(--muted);font-size:11px;margin-bottom:3px}.title h1{margin:0;font-size:21px;letter-spacing:-.02em}
+.iconbtn,.avatar{width:36px;height:36px;border-radius:14px;background:#fff;display:grid;place-items:center;border:1px solid rgba(226,232,240,.9);box-shadow:0 6px 16px rgba(15,23,42,.06)}
+.content{height:calc(100% - 40px - 58px);overflow-y:auto;padding:0 18px 78px;scrollbar-width:none}.content::-webkit-scrollbar{display:none}
+.content.no-nav{height:calc(100% - 40px);padding-bottom:18px}
+.nav{position:absolute;left:10px;right:10px;bottom:10px;height:62px;background:rgba(255,255,255,.94);border:1px solid #e5e7eb;border-radius:24px;display:grid;grid-template-columns:repeat(5,1fr);padding:7px;box-shadow:0 -10px 24px rgba(15,23,42,.07)}
+.nav div{border-radius:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#94a3b8}.nav span{font-size:17px}.nav .active{background:var(--soft);color:var(--primary)}
+.hero{border-radius:24px;background:linear-gradient(135deg,#13b89a,#0f766e);color:#fff;padding:17px;box-shadow:0 12px 25px rgba(15,118,110,.20);position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-38px;top:-32px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.12)}
+.hero h2{margin:0 0 6px;font-size:18px;position:relative}.hero p{margin:0;color:rgba(255,255,255,.86);font-size:12px;line-height:1.5;position:relative}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;position:relative;z-index:1}
+.expand{border:0;background:rgba(255,255,255,.20);color:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900;white-space:nowrap}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px;position:relative;z-index:1}
+.metric{background:rgba(255,255,255,.16);border-radius:14px;padding:8px 5px;text-align:center}.metric b{display:block;font-size:17px}.metric span{font-size:10px;color:rgba(255,255,255,.82)}
+.section{display:flex;align-items:center;justify-content:space-between;margin:15px 2px 9px}.section h3{margin:0;font-size:15px}.section a{font-size:11px;color:var(--primary);font-weight:900;text-decoration:none}
+.quick{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.quick .q{background:#fff;border:1px solid #e8eef2;border-radius:20px;padding:13px;min-height:91px;box-shadow:0 7px 16px rgba(15,23,42,.04)}
+.q i{width:36px;height:36px;border-radius:14px;background:var(--soft);display:grid;place-items:center;font-style:normal;font-size:20px;margin-bottom:8px}.q b{display:block;font-size:14px;margin-bottom:3px}.q span{font-size:10px;color:var(--muted);line-height:1.4}
+.notice,.card{background:#fff;border:1px solid #e8eef2;border-radius:20px;padding:13px;box-shadow:0 7px 18px rgba(15,23,42,.04)}
+.notice{display:flex;gap:9px;margin-bottom:9px}.notice b{font-size:12px;display:block;margin-bottom:3px}.notice span{font-size:10.5px;color:var(--muted);line-height:1.45}
+.tag{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}.green{background:#dcfce7;color:#15803d}.orange{background:#fff7ed;color:#c2410c}.red{background:#fee2e2;color:#b91c1c}.blue{background:#dbeafe;color:#1d4ed8}.gray{background:#f1f5f9;color:#475569}
+.primary{width:100%;border:0;background:var(--primary);color:#fff;height:46px;border-radius:16px;font-weight:900;font-size:14px;box-shadow:0 10px 22px rgba(22,160,133,.22)}
+.secondary{width:100%;border:1px solid rgba(22,160,133,.25);background:var(--soft);color:var(--primary-dark);height:44px;border-radius:16px;font-weight:900;font-size:13px}
+.search{display:flex;gap:8px;align-items:center;background:#f1f5f9;border-radius:15px;padding:11px 12px;color:#94a3b8;font-size:12px}
+.fieldgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.field{background:#f8fafc;border-radius:16px;padding:11px;min-height:62px}.field small{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}.field b{font-size:14px}
+.chips{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}.chip{white-space:nowrap;padding:8px 11px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:11px;font-weight:900}.chip.active{background:var(--primary);color:#fff}
+@media(max-height:760px){.phone{width:310px;height:671px;border-radius:39px}.screen{border-radius:31px}.content{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="screen">
+      <div class="status"><span>9:41</span><div class="icons"><span>●●●</span><span>5G</span><span class="battery"></span></div></div>
+
+<header class="header">
+  <div class="headrow">
+    <div class="iconbtn">‹</div>
+    <div class="title" style="flex:1"><small>识别结果</small><h1>用药卡片</h1></div>
+    <div class="iconbtn">✎</div>
+  </div>
+</header>
+
+      <main class="content ">
+
+<section class="notice" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412">
+  <span>⚠️</span>
+  <div><b>用药安全提示</b><span>本 App 仅提供说明书信息整理与提醒辅助。用药请以医生、药师建议及正式说明书为准。</span></div>
+</section>
+
+<section class="card">
+  <div style="display:flex;gap:11px;align-items:center;margin-bottom:13px">
+    <div style="width:48px;height:48px;border-radius:17px;background:linear-gradient(135deg,#ecfeff,#d1fae5);display:grid;place-items:center;font-size:26px">💊</div>
+    <div><h2 style="margin:0 0 4px;font-size:18px">布洛芬缓释胶囊</h2><span style="font-size:11px;color:var(--muted)">规格：0.3g × 20 粒 · 成人常备药</span></div>
+  </div>
+  <div class="fieldgrid">
+    <div class="field"><small>一次用量</small><b>1 粒</b></div>
+    <div class="field"><small>每日次数</small><b>2 次</b></div>
+    <div class="field"><small>服用时间</small><b>饭后</b></div>
+    <div class="field"><small>适用对象</small><b>成人</b></div>
+  </div>
+</section>
+
+<div class="section"><h3>特殊人群提示</h3></div>
+<div class="notice" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412"><span>⚠️</span><div><b>识别到慎用信息</b><span>包含“胃溃疡、儿童、孕妇慎用”等关键词，请核对说明书。</span></div></div>
+
+<div class="section"><h3>风险关键词</h3></div>
+<div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px">
+  <span class="tag red">慎用</span><span class="tag red">过敏</span><span class="tag orange">儿童</span><span class="tag orange">胃溃疡</span><span class="tag blue">饭后</span><span class="tag gray">不得同时使用</span>
+</div>
+
+<section class="card">
+  <div class="section" style="margin-top:0"><h3>注意事项</h3><a>编辑</a></div>
+  <p style="margin:0;color:#475569;line-height:1.65;font-size:12px">不要与其他含布洛芬成分的药物重复服用。若出现过敏反应、胃部不适或其他异常情况，请停止使用并咨询医生或药师。</p>
+</section>
+
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:11px">
+  <button class="secondary">🔊 语音播报</button><button class="secondary">⏰ 设置提醒</button>
+  <button class="secondary">➕ 加入药箱</button><button class="secondary">📄 完整说明书</button>
+</div>
+
+      </main>
+
+    <nav class="nav">
+      <div class=""><span>🏠</span>首页</div>
+      <div class="active"><span>📷</span>扫一扫</div>
+      <div class=""><span>🧰</span>药箱</div>
+      <div class=""><span>👨‍👩‍👧</span>家人</div>
+      <div class=""><span>⚙️</span>我的</div>
+    </nav>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,23 +1,28 @@
-# 药明白
+# 药明白 Windows 网页版
 
-药明白是一款面向家庭用药场景的 iOS 应用，服务老人、儿童家长、长期服药者及家庭照护者。项目围绕“识别、核对、管理、提醒、记录、协同”展开，帮助用户更清楚地了解药品信息并按计划完成用药。
+Vue + FastAPI + SQLite。家庭用户端保留最初手机式 HTML 风格；知识库管理端为独立桌面工作台。
 
-## 文件说明
+## 运行
 
-- `frontend/YaoMIngBai/`：SwiftUI 客户端源码，包含首页、药品识别、家庭药箱、提醒、服药记录、老人模式和儿童喂药等功能。
-- `frontend/YaoMIngBai.xcodeproj/`：Xcode 工程文件，可在 macOS 的 Xcode 中打开。
-- `backend/`：FastAPI 后端源码。
-- `backend/routers/`：成员、药品、提醒、记录和今日用药等接口。
-- `backend/services/`：说明书文字清洗、用法用量及风险信息解析逻辑。
-- `backend/sample_data/`：演示用药品样例数据。
-- `backend/tests/`：后端接口与解析逻辑测试。
+首次安装 Python 3.11+（含 Python Launcher）、Node.js 22 LTS，执行 setup-windows.cmd。分别运行 start-backend.cmd 和 start-frontend.cmd。
 
-## 主要功能
+- 家庭端：http://127.0.0.1:5173 ，账号 family，密码 family-demo。
+- 知识管理端：http://127.0.0.1:5173/admin ，账号 admin，密码 admin-demo。
+- 接口文档：http://127.0.0.1:8000/docs 。家庭和管理接口需要对应登录令牌。
 
-1. 使用相机或相册识别药盒、说明书文字，并生成待核对的结构化用药卡片。
-2. 管理家庭成员、药品库存、存放位置、保质期和有效期。
-3. 设置服药提醒，记录确认或撤销状态，查看每日用药进度。
-4. 提供老人模式、语音播报和大字号交互。
-5. 记录儿童喂药时间、剂量、体温和备注，支持家庭成员协同查看。
+这台电脑依赖已准备。当前已有家庭基础管理、知识维护与审核、规则风险、AI 接入与配置、老人简易模式等；不是全部需求的最终验收版。
 
-本项目仅用于说明书信息整理、用药提醒和记录，不提供诊断、处方或药品推荐，使用时应以药品原说明书及医生、药师指导为准。
+- [文档功能对照和未完成项](docs/文档功能对照.md)
+- [Windows 运行说明](docs/Windows运行说明.md)
+- [分工与接口约定](docs/分工与接口约定.md)
+
+知识样例初始为草稿，管理员审核发布后用户可查询。AI 尚未配置外部服务，填写配置后才会真实调用。原始 HTML 在 docs/html原型，作为样式参考，不作为功能验收依据。
+
+## 分工
+
+- frontend-web：wmx，两个 UI 包（家庭与管理）。
+- backend/routers：sjw，控制包与启动脚本。
+- backend/services：qhy，业务服务、认证、知识、AI、风险。
+- backend/models、backend/repositories、backend/database.py：wzy，模型、数据访问与数据库。
+
+数据在 backend/data/medicine.db。密钥在 backend/.env，均忽略提交。当前只有一个本地家庭演示账号；多家庭隔离、图片 OCR、提醒推送等进度见对照表。
