@@ -30,6 +30,7 @@ def clean_ocr_text(raw_text: str) -> str:
     lines: list[str] = []
     for line in text.splitlines():
         cleaned = re.sub('[ \\t]+', ' ', line).strip()
+        cleaned = re.sub(r'(?<=[㐀-鿿]) +(?=[㐀-鿿])', '', cleaned)
         if cleaned:
             lines.append(cleaned)
     return '\n'.join(lines)
@@ -207,7 +208,7 @@ def _looks_like_medicine_name(value: str, *, require_suffix: bool=False) -> bool
         return False
     if any((keyword in candidate for keyword in NAME_REJECT_KEYWORDS)):
         return False
-    if re.fullmatch('[A-Za-z0-9 .·\\-_/]+', candidate):
+    if not re.fullmatch(r'[㐀-鿿A-Za-z0-9 .·()（）-]+', candidate) or not re.search(r'[㐀-鿿]', candidate):
         return False
     if candidate in SECTION_TITLE_SET:
         return False
@@ -219,25 +220,28 @@ def _looks_like_medicine_name(value: str, *, require_suffix: bool=False) -> bool
 
 def _extract_medicine_name(text: str) -> str:
     """提取通用名称或药品名称。"""
+    # A leaflet heading may share its line with a logo or an OTC annotation.
+    heading_pattern = re.compile(r'(?:^|[。．·|：:] *)\s*([㐀-鿿A-Za-z0-9·-]{2,24})说明书(?=\s*(?:$|[。．·|]))')
+    headings = [
+        match.group(1)
+        for line in text.splitlines()[:12]
+        for match in heading_pattern.finditer(line)
+        if _looks_like_medicine_name(match.group(1))
+    ]
     labelled_patterns = ('^\\s*(?:[【\\[［]\\s*药品名称\\s*[】\\]］]\\s*)?[【\\[［]?\\s*通用名称\\s*[】\\]］]?\\s*[:：]\\s*(?P<name>[^\\n，,。；;]+)', '^\\s*(?:[【\\[［]\\s*药品名称\\s*[】\\]］]\\s*)?[【\\[［]?\\s*商品名称\\s*[】\\]］]?\\s*[:：]\\s*(?P<name>[^\\n，,。；;]+)', '^\\s*(?:[【\\[［]\\s*药品名称\\s*[】\\]］]\\s*)?[【\\[［]?\\s*中文名称\\s*[】\\]］]?\\s*[:：]\\s*(?P<name>[^\\n，,。；;]+)', '^\\s*[【\\[［]?\\s*药品名称\\s*[】\\]］]?\\s*[:：]\\s*(?P<name>[^\\n，,。；;]+)')
     for pattern in labelled_patterns:
         for match in re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE):
             candidate = _normalise_name_candidate(match.group('name'))
             if _looks_like_medicine_name(candidate):
+                if headings and candidate not in headings and '商品名称' not in match[0]:
+                    return '未识别药品'
                 return candidate
-    for line in text.splitlines():
-        value = line.strip('【】[]［］ ：:，,。；;')
-        if value.endswith('说明书'):
-            candidate = _normalise_name_candidate(value)
-            if _looks_like_medicine_name(candidate, require_suffix=True):
-                return candidate
-    for line in text.splitlines():
-        candidate = _normalise_name_candidate(line)
+    for candidate in headings:
         if _looks_like_medicine_name(candidate, require_suffix=True):
             return candidate
     for line in text.splitlines():
         candidate = _normalise_name_candidate(line)
-        if _looks_like_medicine_name(candidate):
+        if _looks_like_medicine_name(candidate, require_suffix=True):
             return candidate
     return '未识别药品'
 
@@ -371,6 +375,9 @@ def _extract_spec(text: str) -> str:
     """提取规格。"""
     value = _short_section_value(text, ('规格',))
     if value:
+        # A broken qualifier can change which formulation the specification describes.
+        if value.count('(')+value.count('（') != value.count(')')+value.count('）'):
+            return ''
         return value
     for body in _fragment_heading_items(text, ('格',)):
         value = re.split('[\\n。；;]', body, maxsplit=1)[0].strip(' ：:，,。；;【】[]［］()（）')

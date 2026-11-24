@@ -10,7 +10,12 @@ export async function api(path, options = {}) {
       window.dispatchEvent(new CustomEvent('auth-expired', {detail:key}))
     }
     const body = await response.json().catch(() => ({}))
-    throw new Error(typeof body.detail === 'string' ? body.detail : '请求失败，请检查输入或后端连接')
+    const details = Array.isArray(body.detail)
+      ? body.detail.map(({loc, msg}) => `${loc.slice(1).join('.')}: ${msg}`).join('；')
+      : body.detail
+    const error = new Error(typeof details === 'string' ? details : '请求失败，请检查输入或后端连接')
+    error.status = response.status
+    throw error
   }
   return response.status === 204 ? null : response.json()
 }

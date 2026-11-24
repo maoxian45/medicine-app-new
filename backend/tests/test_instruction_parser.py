@@ -325,3 +325,28 @@ def test_parse_xiaochaihu_malformed_ocr_sections() -> None:
     assert all("忌］" not in item for item in result["contraindications"])
     assert "不宜在服药期间同时服用滋补性中药" in result["precautions"]
     assert "忌烟、酒及辛辣、生冷、油腻食物" in result["precautions"]
+
+
+def test_spaced_ocr_leaves_conflicting_name_and_broken_spec_blank():
+    result = parse_instruction(
+        '|| mmm |\n小 柴 朗 上 颗粒 说 明 书\n'
+        '通用 名 称 : 小 此 前条 粒\n'
+        '[ 规 格 ] 每 皂 装 2.5 克 (无 黄 态\n'
+        '[ 用 法 用 量 ] 开水 冲服 。 一 次 1-2 袋 , 一 日 3 次 。'
+    )
+    assert result['name'] == '未识别药品'
+    assert result['spec'] == ''
+    assert result['dose'] == '1-2袋'
+    assert result['frequency'] == '3次'
+    assert result['method'] == '开水冲服'
+
+
+def test_ibuprofen_name_from_title_with_ocr_logo_noise():
+    result = parse_instruction(
+        'PS A N\n坛 * 。 布 洛 芬 片 说 明 书 。 和\n'
+        '【商品 名称】\n过 十 名称， 吉海 箔 和 片\n'
+        '【局 法 用 量 】 口 联 ，12 入 以 无 乒 辣 腥 成 人 一 性 2 片'
+    )
+    assert result['name'] == '布洛芬片'
+    assert result['dose'] == ''
+    assert result['frequency'] == ''

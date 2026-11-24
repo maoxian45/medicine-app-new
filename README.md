@@ -1,6 +1,6 @@
 # 药明白 Windows 网页版
 
-Vue + FastAPI + SQLite。家庭用户端保留最初手机式 HTML 风格；知识库管理端为独立桌面工作台。
+Vue + FastAPI + SQLite。家庭用户端采用居中的竖屏单列网页；知识库管理端为独立桌面工作台。
 
 ## 运行
 
@@ -14,7 +14,8 @@ Vue + FastAPI + SQLite。家庭用户端保留最初手机式 HTML 风格；知�
 
 - [文档功能对照和未完成项](docs/文档功能对照.md)
 - [Windows 运行说明](docs/Windows运行说明.md)
-- [分工与接口约定](docs/分工与接口约定.md)
+- [分工与接口约定](docs/接口约定.md)
+- [前端联调清单](docs/前端联调清单.md)
 
 知识样例初始为草稿，管理员审核发布后用户可查询。AI 尚未配置外部服务，填写配置后才会真实调用。原始 HTML 在 docs/html原型，作为样式参考，不作为功能验收依据。
 
@@ -25,4 +26,4 @@ Vue + FastAPI + SQLite。家庭用户端保留最初手机式 HTML 风格；知�
 - backend/services：qhy，业务服务、认证、知识、AI、风险。
 - backend/models、backend/repositories、backend/database.py：wzy，模型、数据访问与数据库。
 
-数据在 backend/data/medicine.db。密钥在 backend/.env，均忽略提交。当前只有一个本地家庭演示账号；多家庭隔离、图片 OCR、提醒推送等进度见对照表。
+数据在 backend/data/medicine.db。密钥在 backend/.env，均忽略提交。当前只有一个本地家庭演示账号；多家庭隔离、提醒推送等进度见对照表。
