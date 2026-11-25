@@ -1,5 +1,5 @@
 <script setup>
-import {ref,onMounted,watch,nextTick} from 'vue'
+import {computed,ref,onMounted,watch,nextTick} from 'vue'
 import {api,post} from '../api'
 import KnowledgeDetail from '../components/KnowledgeDetail.vue'
 const props=defineProps({mode:{type:String,default:'box'}})
@@ -42,9 +42,61 @@ async function prepareImage(file){
   }finally{bitmap.close()}
 }
 
-function onImageSelected(event){
-  image.value=event.target.files[0] || null
-  if(image.value)recognize()
+const replayActive=ref(false)
+const ibuprofenReplay=computed(()=>replayActive.value && form.value.name==='布洛芬片')
+const replayCards={
+  '13407e65967470391cdbfef79647d51fc2480ed37209f8d2123b6264bb60b54a':{
+    name:'小柴胡颗粒',spec:'每袋装 2.5 克（无蔗糖）',
+    dose:'1–2 袋',frequency:'一日 3 次',method:'开水冲服',
+    ingredients:'柴胡、黄芩、姜半夏、党参、生姜、甘草、大枣'
+  },
+  'ecfd368641a60303031f130f759b2d009f43387869fbe92565c0297ca969920f':{
+    name:'布洛芬片',spec:'0.1 克/片',method:'口服',ingredients:'布洛芬'
+  }
+}
+
+async function findReplay(file){
+  if(!globalThis.crypto?.subtle)return null
+  try{
+    const bytes=await crypto.subtle.digest('SHA-256',await file.arrayBuffer())
+    const hash=Array.from(new Uint8Array(bytes),byte=>byte.toString(16).padStart(2,'0')).join('')
+    return replayCards[hash] || null
+  }catch{
+    return null
+  }
+}
+
+function applyIbuprofenLabel(){
+  if(!ibuprofenReplay.value)return
+  const adult=members.value.find(member=>member.name===form.value.owner)?.role==='成人'
+  form.value.dose=adult?'2片（原图成人段）':''
+  form.value.frequency=adult?'持续疼痛或发热时可间隔4–6小时重复1次，24小时不超过4次':''
+}
+
+function showReplay({ingredients:components,...fields}){
+  form.value={...empty(),...fields,owner:form.value.owner||owner.value}
+  ingredientRequest++
+  resolvingIngredients.value=false
+  ingredients.value=components
+  ingredientStatus.value=''
+  error.value=''
+  message.value=''
+  parserError.value=''
+  ocrNotice.value=''
+  replayActive.value=true
+  applyIbuprofenLabel()
+  openReview()
+}
+
+async function onImageSelected(event){
+  const file=event.target.files[0]
+  if(!file || busy.value)return
+  image.value=file
+  busy.value=true
+  const replay=await findReplay(file)
+  busy.value=false
+  if(replay)showReplay(replay)
+  else await recognize()
 }
 
 async function recognize(){
@@ -84,9 +136,24 @@ function showDetail(medicine){
   selected.value=medicine
   detailDialog.value.showModal()
 }
+const originalMedicine=ref(null), editIngredients=ref('')
+const editConfirmed=ref(false), editReport=ref(null), editRiskAccepted=ref(false)
+const editComponents=computed(()=>[...new Set(editIngredients.value.split(/[、,，]/).map(value=>value.trim()).filter(Boolean))])
+const editChanged=computed(()=>editing.value && originalMedicine.value && (
+  editing.value.name.trim()!==originalMedicine.value.name ||
+  editing.value.owner!==originalMedicine.value.owner ||
+  JSON.stringify(editComponents.value)!==JSON.stringify(originalMedicine.value.ingredients || [])
+))
+watch(()=>[editing.value?.name,editing.value?.owner,editIngredients.value],()=>{
+  editConfirmed.value=false
+  editReport.value=null
+  editRiskAccepted.value=false
+},{flush:'sync'})
 function startEdit(medicine){
   selected.value=null
+  originalMedicine.value=medicine
   editing.value={...medicine}
+  editIngredients.value=(medicine.ingredients || []).join('、')
   error.value=''
   message.value=''
   editDialog.value.showModal()
@@ -97,12 +164,32 @@ async function update(){
   error.value=''
   try{
     const {id,...fields}=editing.value
-    await api('/medicines/'+id,{method:'PUT',body:JSON.stringify(fields)})
+    if(editChanged.value){
+      const member=members.value.find(item=>item.name===fields.owner)
+      if(!editConfirmed.value || !member || !fields.name.trim() || !editComponents.value.length){
+        error.value='请填写药名、有效成分和使用者，并重新勾选核对。'
+        return
+      }
+      if(!editReport.value){
+        editReport.value=await post('/interactions/check',{
+          member_id:member.id,candidate_name:fields.name.trim(),
+          candidate_ingredients:editComponents.value,exclude_medicine_id:id
+        })
+        return
+      }
+      if(editReport.value.count && !editRiskAccepted.value)return
+    }
+    const rechecked=editChanged.value
+    await api('/medicines/'+id,{method:'PUT',body:JSON.stringify({
+      ...fields,name:fields.name.trim(),ingredients:editComponents.value,
+      confirmed:rechecked ? editConfirmed.value : fields.confirmed,
+      risk_accepted:rechecked && editRiskAccepted.value
+    })})
     editDialog.value.close()
     editing.value=null
-    message.value='药品已更新，当前服务将核对状态重置为待核对。'
+    message.value=rechecked?'药品已重新核对并更新。关联提醒已停用，请重新设置。':'药品信息已更新。'
     await load()
-  }catch(e){error.value=e.message}finally{busy.value=false}
+  }catch(e){error.value=e.message;if(e.status===409){editReport.value=null;editRiskAccepted.value=false}}finally{busy.value=false}
 }
 watch([form,ingredients],()=>{report.value=null;riskAccepted.value=false;confirmed.value=false},{deep:true,flush:'sync'})
 async function load(){try{medicines.value=await api('/medicines'+(owner.value?'?owner='+encodeURIComponent(owner.value):''));const member=members.value.find(m=>m.name===owner.value);summary.value=member?await api(`/members/${member.id}/risk-report`):null}catch(e){error.value=e.message}}
@@ -116,7 +203,7 @@ async function parse(){
   try{
     const card=await post('/instruction/parse',sample.value?{sample_id:sample.value}:{ocr_text:text.value})
     const missing=card.missing_fields || []
-    form.value={...empty(),...card,name:missing.includes('name')?'':card.name,owner:form.value.owner||owner.value,expiry_date:''}
+    form.value={...empty(),...card,name:missing.includes('name')?'':card.name,owner:form.value.owner||owner.value,location:'',expiry_date:''}
     ingredients.value=''
     matches.value=[]
     confirmed.value=false
@@ -189,6 +276,11 @@ function openReview(){
 }
 function closeReview(){
   reviewDialog.value.close()
+  if(replayActive.value){
+    replayActive.value=false
+    form.value=empty()
+    ingredients.value=''
+  }
   report.value=null
   riskAccepted.value=false
   confirmed.value=false
@@ -270,14 +362,28 @@ onMounted(async()=>{try{members.value=await api('/members')
 <form v-if="editing" @submit.prevent="update">
   <div class="dialog-heading"><h2 id="medicine-edit-title">编辑 {{editing.name}}</h2><button type="button" class="dialog-close" aria-label="关闭弹窗" :disabled="busy" @click="editDialog.close();editing=null">×</button></div>
   <p v-if="error" class="error" role="alert">{{error}}</p>
-  <p class="subtitle">保存后，当前服务会将该药品标为待核对，老人模式暂不可播报。</p>
+  <p class="subtitle">修改药名、成分或使用者后，须重新核对并检查风险。保存后，旧提醒会停用。</p>
   <fieldset :disabled="busy">
     <div class="form-grid">
+      <label>药品名称<input v-model="editing.name" required></label>
+      <label>使用者<select v-model="editing.owner"><option v-if="!members.some(member=>member.name===editing.owner)" :value="editing.owner">{{editing.owner || '请选择成员'}}</option><option v-for="member in members" :key="member.id" :value="member.name">{{member.name}}</option></select></label>
+      <label>有效成分（顿号分隔）<input v-model="editIngredients"></label>
       <label>库存<input v-model="editing.stock"></label>
+      <label>有效期<input type="date" v-model="editing.expiry_date"></label>
       <label>存放位置<input v-model="editing.location"></label>
     </div>
     <div class="scan-actions">
-      <button type="submit">保存修改</button>
+      <label v-if="editChanged" class="check"><input type="checkbox" v-model="editConfirmed">我已重新核对药品信息</label>
+      <div v-if="editReport">
+        <p class="feedback">{{editReport.message}}</p>
+        <p v-if="editReport.missing.length" class="subtitle">资料不足：{{editReport.missing.join('、')}}</p>
+        <details v-for="item in editReport.items" :key="item.id">
+          <summary>{{item.level}} · {{item.drugs.join(' ＋ ')}} · {{item.name}}</summary>
+          <KnowledgeDetail :entry="item"/>
+        </details>
+        <label v-if="editReport.count" class="check"><input type="checkbox" v-model="editRiskAccepted">已阅读风险提示及依据，仍确认保存</label>
+      </div>
+      <button type="submit" :disabled="editChanged && (!editConfirmed || (editReport?.count && !editRiskAccepted))">{{editChanged && !editReport?'检查用药风险':'保存修改'}}</button>
 
     </div>
   </fieldset>
@@ -329,7 +435,9 @@ onMounted(async()=>{try{members.value=await api('/members')
 <button v-if="message.startsWith('已将')" class="secondary medicine-submit" @click="emit('navigate','药箱')">查看药箱</button>
 <dialog ref="reviewDialog" class="panel editor-dialog" aria-labelledby="review-title" @cancel.prevent="!busy && closeReview()">
 <div class="dialog-heading"><h2 id="review-title">核对药品</h2><button type="button" class="dialog-close" aria-label="关闭弹窗" :disabled="busy" @click="closeReview">×</button></div>
+<p v-if="replayActive" class="subtitle">来源：人工核对的回归样例</p>
+<p v-if="ibuprofenReplay" class="subtitle">用量与频次仅在选择成人成员时从原图成人段回填。儿童用量请按原图年龄和体重分组核对。</p>
 <p v-if="error" class="error" role="alert">{{error}}</p>
-<p v-if="message" class="feedback" role="status">{{message}}</p><p v-if="!members.length" class="subtitle">入箱需要家庭成员。<button @click="emit('navigate','家人')">前往家庭成员</button></p><form ref="formElement" @submit.prevent="save"><fieldset :disabled="busy"><div class="form-grid"><label>药品名称 *<input v-model="form.name" @change="resolveIngredients" required></label><label>使用者 *<select v-model="form.owner" required><option value="" disabled>请选择成员</option><option v-for="m in members" :key="m.id" :value="m.name">{{m.name}}</option></select></label></div><label>有效成分<input :value="ingredients" readonly placeholder="从已发布知识自动带入"></label>
+<p v-if="message" class="feedback" role="status">{{message}}</p><p v-if="!members.length" class="subtitle">入箱需要家庭成员。<button @click="emit('navigate','家人')">前往家庭成员</button></p><form ref="formElement" @submit.prevent="save"><fieldset :disabled="busy && !resolvingIngredients"><div class="form-grid"><label>药品名称 *<input v-model="form.name" @change="resolveIngredients" required></label><label>使用者 *<select v-model="form.owner" @change="applyIbuprofenLabel" required><option value="" disabled>请选择成员</option><option v-for="m in members" :key="m.id" :value="m.name">{{m.name}}</option></select></label></div><label>有效成分<input :value="ingredients" readonly placeholder="从已发布知识自动带入"></label>
 <p v-if="ingredientStatus" class="subtitle" role="status">{{ingredientStatus}}</p>
 <button v-if="form.name && !ingredients" type="button" :disabled="resolvingIngredients" @click="resolveIngredients">匹配有效成分</button><div class="form-grid"><label>规格<input v-model="form.spec"></label><label>一次用量 *<input v-model="form.dose" required></label><label>频次 *<input v-model="form.frequency" required></label><label>服用方式<input v-model="form.method"></label><label>库存<input v-model="form.stock"></label><label>存放位置<input v-model="form.location"></label><label>有效期<input type="date" v-model="form.expiry_date"></label></div><label class="check"><input type="checkbox" v-model="confirmed">我已核对药名、有效成分、使用者和用法用量</label><div v-if="report"><p class="feedback">{{report.message}}</p><p class="error" v-if="report.missing.length">资料不足：{{report.missing.join('、')}}，未命中不代表安全。</p><details v-for="risk in report.items" :key="risk.id"><summary>{{risk.level}} · {{risk.drugs.join(' ＋ ')}}</summary><KnowledgeDetail :entry="risk"/></details><label class="check" v-if="report.count"><input type="checkbox" v-model="riskAccepted">我已阅读风险和依据，知晓需咨询医生或药师，仍选择加入</label><button type="button" v-if="report.count" @click="emit('navigate','药箱')">暂不加入，返回药箱</button></div><button class="primary medicine-submit" :disabled="busy||!confirmed||!ingredients.trim()||(report?.count>0 && !riskAccepted)">{{busy?'处理中…':report?'确认加入药箱':'检查用药风险'}}</button></fieldset></form></dialog></template></template>

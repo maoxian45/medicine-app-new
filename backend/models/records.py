@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 class RecordCreate(BaseModel):
@@ -11,6 +12,7 @@ class RecordCreate(BaseModel):
     temperature: str = ''
     note: str = ''
     status: str = '已服药'
+    taken_at: datetime | None = None
 
 class RecordResponse(RecordCreate):
     id: int

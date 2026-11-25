@@ -38,7 +38,8 @@ def feedback(request: Feedback):
 
 @router.post('/interactions/check')
 def check(request: RiskCheck):
-    return service.risk_report(request.member_id,request.candidate_name,request.candidate_ingredients)
+    return service.risk_report(request.member_id,request.candidate_name,request.candidate_ingredients,
+                               exclude_medicine_id=request.exclude_medicine_id,foods=request.foods)
 
 
 @router.get('/members/{member_id}/risk-report')

@@ -75,11 +75,42 @@ def create_medicine(medicine: MedicineCreate) -> dict:
     return _medicine_from_row(row)
 
 def update_medicine(medicine_id: int, medicine: MedicineUpdate) -> dict:
+    from services.knowledge import risk_report
+    from services.members import list_members
+    current = get_medicine(medicine_id)
+    changed = any(current[field] != getattr(medicine, field) for field in (
+        'name', 'owner', 'ingredients', 'dose', 'frequency', 'method', 'spec'
+    ))
+    report = None
+    if changed and (current['confirmed'] or medicine.confirmed or medicine.ingredients):
+        if not medicine.confirmed or not all((
+            medicine.name.strip(), medicine.owner.strip(), medicine.dose.strip(),
+            medicine.frequency.strip(), medicine.ingredients
+        )):
+            raise HTTPException(422, '请重新核对药名、成分、使用者、用量及频次')
+        member = next((m for m in list_members() if m['name'] == medicine.owner), None)
+        if member is None:
+            raise HTTPException(404, '使用者不存在')
+        report = risk_report(member['id'], medicine.name, medicine.ingredients, exclude_medicine_id=medicine_id)
+        if report['count'] and not medicine.risk_accepted:
+            raise HTTPException(409, '请先查看并确认用药风险')
     production_date, shelf_life, expiry_date = _resolve_date_fields(medicine.production_date, medicine.shelf_life, medicine.expiry_date)
-    row, = repository.update_medicine_transaction(expiry_date, medicine, medicine_id, production_date, shelf_life)
-    from repositories.knowledge import confirmation
-    confirmation(medicine_id,False,medicine.ingredients)
+    if production_date == current['production_date'] and shelf_life == current['shelf_life']:
+        expiry_date = current['expiry_date']
+        if 'expiry_date' in medicine.model_fields_set:
+            expiry_date = medicine.expiry_date.strip()
+            if expiry_date and expiry_date != current['expiry_date']:
+                try:
+                    expiry_date = date.fromisoformat(expiry_date).isoformat()
+                except ValueError as exc:
+                    raise HTTPException(422, '有效期必须使用 YYYY-MM-DD 格式') from exc
+    row, = repository.update_medicine_transaction(
+        expiry_date, medicine, medicine_id, production_date, shelf_life,
+        confirmed=bool(report) or (not changed and current['confirmed']),
+        report=report, pause_reminders=changed,
+    )
     return _medicine_from_row(row)
+
 
 def delete_medicine(medicine_id: int) -> None:
     """删除药品，并停用其 ID 关联的仍启用提醒。"""

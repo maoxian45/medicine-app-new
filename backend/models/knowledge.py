@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class KnowledgeEntry(BaseModel):
-    kind: Literal['drug', 'rule'] = 'drug'
+    kind: Literal['drug', 'rule', 'food_rule', 'population_rule'] = 'drug'
     name: str = Field(min_length=1, max_length=160)
     aliases: list[str] = Field(default_factory=list)
     ingredients: list[str] = Field(default_factory=list)
@@ -52,6 +52,8 @@ class RiskCheck(BaseModel):
     member_id: int
     candidate_name: str = ''
     candidate_ingredients: list[str] = Field(default_factory=list)
+    exclude_medicine_id: int | None = None
+    foods: list[str] = Field(default_factory=list, max_length=30)
 
 
 class Feedback(BaseModel):

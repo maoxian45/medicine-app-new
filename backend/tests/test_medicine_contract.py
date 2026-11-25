@@ -152,3 +152,18 @@ def test_delete_medicine_deactivates_only_id_linked_reminders() -> None:
     assert client.delete(f"/api/reminders/{linked_b.json()['id']}").status_code == 204
     assert client.delete(f"/api/reminders/{legacy_same_name.json()['id']}").status_code == 204
     assert client.delete(f"/api/medicines/{medicine_b_id}").status_code == 204
+
+
+def test_edit_expiry_keeps_production_date_and_persists_override():
+    with TestClient(app) as client:
+        created = client.post('/api/medicines', json={
+            'name': '日期修改测试', 'production_date': '2024-01-31', 'shelf_life': '1个月'
+        }).json()
+        url = f"/api/medicines/{created['id']}"
+        response = client.put(url, json={**created, 'expiry_date': '2027-12-01'})
+        assert response.status_code == 200
+        assert response.json()['production_date'] == '2024-01-31'
+        saved = client.get(url).json()
+        assert saved['expiry_date'] == '2027-12-01'
+        assert client.put(url, json={**saved, 'stock': '2盒'}).json()['expiry_date'] == '2027-12-01'
+        assert client.put(url, json={**saved, 'expiry_date': ''}).json()['expiry_date'] == ''

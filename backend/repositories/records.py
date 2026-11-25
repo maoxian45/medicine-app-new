@@ -6,9 +6,10 @@ def list_records_transaction(values, where_clause):
         rows = connection.execute(f'SELECT * FROM records{where_clause} ORDER BY taken_at DESC, id DESC', values).fetchall()
     return (rows,)
 
-def create_record_transaction(_now, record):
+def create_record_transaction(_now, record, taken_at=None):
     with get_connection() as connection:
-        taken_at = _now()
+        created_at = _now()
+        taken_at = taken_at or created_at
         if record.medicine_id is not None:
             medicine = connection.execute('SELECT name FROM medicines WHERE id = ?', (record.medicine_id,)).fetchone()
             if medicine is None:
@@ -34,7 +35,7 @@ def create_record_transaction(_now, record):
             existing_record = connection.execute('\n                SELECT id FROM records\n                WHERE reminder_id = ? AND substr(taken_at, 1, 10) = ?\n                ', (record.reminder_id, taken_at[:10])).fetchone()
             if existing_record is not None:
                 raise HTTPException(status_code=409, detail='该提醒今日已确认服药，请勿重复提交')
-        cursor = connection.execute('\n            INSERT INTO records\n                (reminder_id, medicine_id, member_id, medicine_name, member_name,\n                 dose, recorded_by, temperature, note, taken_at, status, created_at)\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n            ', (record.reminder_id, record.medicine_id, record.member_id, record.medicine_name, record.member_name, record.dose, record.recorded_by, record.temperature, record.note, taken_at, record.status, taken_at))
+        cursor = connection.execute('\n            INSERT INTO records\n                (reminder_id, medicine_id, member_id, medicine_name, member_name,\n                 dose, recorded_by, temperature, note, taken_at, status, created_at)\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n            ', (record.reminder_id, record.medicine_id, record.member_id, record.medicine_name, record.member_name, record.dose, record.recorded_by, record.temperature, record.note, taken_at, record.status, created_at))
         row = connection.execute('SELECT * FROM records WHERE id = ?', (cursor.lastrowid,)).fetchone()
     return (row,)
 

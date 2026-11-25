@@ -115,3 +115,56 @@ def test_reminder_state_and_member_edit(client):
     assert client.get('/api/today').json()['total']==0
     assert client.patch(f"/api/reminders/{reminder['id']}",json={'is_active':True}).status_code==200
     assert client.get('/api/today').json()['total']==1
+
+
+def test_edit_rechecks_without_old_medicine_and_preserves_stock_confirmation(client):
+    for entry in repo.entries(True):
+        repo.change_state(entry['id'], 'approved', 1)
+    member = client.post('/api/members', json={'name': '重核对测试'}).json()
+    payload = {'name': '旧药', 'owner': member['name'], 'dose': '测试量',
+               'frequency': '测试频次', 'confirmed': True, 'ingredients': ['华法林']}
+    medicine = client.post('/api/medicines', json=payload).json()
+    url = f"/api/medicines/{medicine['id']}"
+    assert client.put(url, json={**payload, 'stock': '测试库存'}).json()['confirmed']
+    updated = {**payload, 'name': '新药', 'ingredients': ['布洛芬']}
+    assert client.put(url, json={**updated, 'confirmed': False}).status_code == 422
+    result = client.put(url, json=updated)
+    assert result.status_code == 200
+    assert result.json()['confirmed']
+    assert client.get(url).json()['ingredients'] == ['布洛芬']
+    client.post('/api/medicines', json={'name': '另一药', 'owner': member['name'], 'ingredients': ['华法林']})
+    owner_changed = client.put(url, json={**updated, 'name': '再核对药品'})
+    assert owner_changed.status_code == 409
+
+
+def test_published_food_and_population_rules_are_matched(client):
+    admin = login(client, 'admin')
+    member = client.post('/api/members', json={'name': '新规则测试', 'role': '儿童'}).json()
+    client.post('/api/medicines', json={'name': '测试药', 'owner': member['name'], 'ingredients': ['测试成分']})
+    check = {'member_id': member['id'], 'foods': ['测试饮品']}
+    for kind, target in [('food_rule', '测试饮品'), ('population_rule', '儿童')]:
+        draft = client.post('/api/admin/knowledge', headers=admin, json={
+            'name': kind, 'kind': kind, 'left': '测试成分', 'right': target,
+            'impact': '测试提示', 'source_name': '测试来源', 'source_url': 'https://example.com',
+            'chapter': '测试章节', 'source_version': '1', 'original': '测试内容'
+        })
+        assert draft.status_code == 201
+        entry_id = draft.json()['id']
+        before = client.post('/api/interactions/check', json=check).json()
+        assert all(item['id'] != entry_id for item in before['items'])
+        assert client.post(f'/api/admin/knowledge/{entry_id}/approve', headers=admin).status_code == 200
+    report = client.post('/api/interactions/check', json=check).json()
+    assert {item['kind'] for item in report['items']} == {'food_rule', 'population_rule'}
+    report = client.post('/api/interactions/check', json={**check, 'foods': ['其他饮品']}).json()
+    assert {item['kind'] for item in report['items']} == {'population_rule'}
+
+
+def test_manual_record_stores_actual_time_separately(client):
+    payload = {'medicine_name': '测试药', 'member_name': '测试儿童', 'taken_at': '2020-01-02T12:30:00+08:00'}
+    response = client.post('/api/records', json=payload)
+    assert response.status_code == 201
+    row = response.json()
+    assert row['taken_at'] == '2020-01-02T04:30:00+00:00'
+    assert row['created_at'] != row['taken_at']
+    assert client.get('/api/records', params={'date': '2020-01-02'}).json()[0]['id'] == row['id']
+    assert client.post('/api/records', json={**payload, 'taken_at': '2099-01-01T00:00:00Z'}).status_code == 422
