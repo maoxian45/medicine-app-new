@@ -7,7 +7,8 @@ from fastapi.testclient import TestClient
 
 from database import _migrate_medicines_schema, init_db
 from main import app
-from routers.medicines import MedicineCreate, _resolve_date_fields
+from models.medicines import MedicineCreate
+from services.medicines import _resolve_date_fields
 
 
 client = TestClient(app)
@@ -167,3 +168,12 @@ def test_edit_expiry_keeps_production_date_and_persists_override():
         assert saved['expiry_date'] == '2027-12-01'
         assert client.put(url, json={**saved, 'stock': '2盒'}).json()['expiry_date'] == '2027-12-01'
         assert client.put(url, json={**saved, 'expiry_date': ''}).json()['expiry_date'] == ''
+
+
+def test_edit_unknown_medicine_returns_404() -> None:
+    """编辑不存在的药品不能静默成功，也不能当成新增。"""
+
+    response = client.put("/api/medicines/999999", json={"name": "不存在的药品"})
+    assert response.status_code == 404
+    assert response.json()["detail"] == "药品不存在"
+

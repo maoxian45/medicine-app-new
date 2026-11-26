@@ -2,8 +2,9 @@
 cd /d "%~dp0frontend-web"
 where npm.cmd >nul 2>nul
 if errorlevel 1 (
-  node "%~dp0.tools\npm\bin\npm-cli.js" run dev
-) else (
-  call npm.cmd run dev
+  echo Node.js 22 LTS not found. Install it, reopen the terminal, then run setup-windows.cmd.
+  pause
+  exit /b 1
 )
+call npm.cmd run dev
 pause
